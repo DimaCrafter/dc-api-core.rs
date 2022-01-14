@@ -1,0 +1,23 @@
+[package]
+edition = "2021"
+name = "dc-api-core"
+version = "0.0.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
+napi = { version = "2.0.2", default-features = false, features = ["tokio_rt", "napi6", "serde-json"] }
+napi-derive = "2.0.5"
+tokio = { version = "1.15.0", features = ["full"] }
+futures = "0.3.19"
+async-trait = "0.1.52"
+serde_json = "1.0.74"
+dc_macro = { path = "./dc_macro" }
+
+[build-dependencies]
+napi-build = "1.2.1"
+
+[profile.release]
+lto = true
