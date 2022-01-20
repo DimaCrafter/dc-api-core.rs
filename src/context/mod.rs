@@ -1,7 +1,7 @@
 
 use std::net::IpAddr;
 use napi::{Result, JsObject, Env, CallContext, Either, JsUndefined, JsString, JsUnknown, ValueType, Status, Property, JsNumber, JsBoolean, JsBuffer};
-use crate::{http::{entity::HttpHeaders, ParsedHttpConnection, codes::HttpCode}, utils::macros::{js_get_string, js_err}, get_app};
+use crate::{http::{entity::{HttpHeaders, Response}, ParsedHttpConnection, codes::HttpCode}, utils::macros::{js_get_string, js_err}, get_app};
 
 pub struct ControllerHttpContext {
     pub req_headers: HttpHeaders,
@@ -10,6 +10,16 @@ pub struct ControllerHttpContext {
     pub res_headers: HttpHeaders,
     pub res_payload: Option<Vec<u8>>,
     pub res_code: HttpCode
+}
+
+impl ControllerHttpContext {
+    pub fn into_response (self) -> Response {
+        Response {
+            code: self.res_code,
+            headers: self.res_headers,
+            payload: self.res_payload
+        }
+    }
 }
 
 fn create_base_context<T: 'static> (env: &Env, ctx: T) -> Result<JsObject> {
@@ -35,9 +45,15 @@ fn extract_ctx<'a> (call_ctx: &'a CallContext) -> Result<&'a mut ControllerHttpC
 
 pub fn create_http_context (env: &Env, connection: &mut ParsedHttpConnection) -> Result<JsObject> {
     let req = connection.req.take().unwrap();
+
+    let query_string = match req.path.split_once('?') {
+        Some((_, query_string)) => query_string,
+        None => ""
+    };
+
     let ctx = ControllerHttpContext {
         req_headers: req.headers,
-        query_string: req.path.split_once('?').unwrap().1.to_string(),
+        query_string: query_string.to_string(),
         address: connection.get_address(),
         res_headers: HttpHeaders::empty(),
         res_payload: None,

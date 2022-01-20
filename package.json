@@ -1,24 +1,25 @@
 {
-  "name": "dc-api-core",
-  "version": "0.0.0",
-  "main": "index.js",
-  "types": "index.d.ts",
-  "napi": {
-    "name": "@dpwd/dc-api-core",
-    "triples": {}
-  },
-  "license": "MIT",
-  "devDependencies": {
-    "@napi-rs/cli": "^2.2.0"
-  },
-  "engines": {
-    "node": ">= 10"
-  },
-  "scripts": {
-    "artifacts": "napi artifacts",
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm",
-    "version": "napi version"
-  }
+	"name": "dc-api-core",
+	"version": "0.4.0",
+	"main": "index.js",
+	"napi": {
+		"name": "@dpwd/dc-api-core",
+		"triples": {}
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@napi-rs/cli": "^2.2.0"
+	},
+	"engines": {
+		"node": ">= 10"
+	},
+	"scripts": {
+		"artifacts": "napi artifacts",
+		"build": "napi build --platform --release",
+		"build:debug": "napi build --platform",
+		"prepublishOnly": "napi prepublish -t npm",
+		"version": "napi version",
+		"test": "cd test; node index.js; cd ..",
+		"build:test": "yarn build:debug && yarn test"
+	}
 }

@@ -34,9 +34,18 @@ pub struct HttpHeaders {
 
 impl HttpHeaders {
     pub fn empty () -> Self {
-        return HttpHeaders {
+        HttpHeaders {
             contents: Vec::new()
-        };
+        }
+    }
+
+    pub fn with_type (content_type: &str) -> Self {
+        HttpHeaders {
+            contents: vec![HttpHeader {
+                name: "content-type".to_string(),
+                value: content_type.to_string()
+            }]
+        }
     }
 
     pub fn push (&mut self, name: String, value: String) {
@@ -107,6 +116,24 @@ pub struct Response {
     pub code: HttpCode,
     pub headers: HttpHeaders,
     pub payload: Option<Vec<u8>>
+}
+
+impl Response {
+    pub fn from_error (err: napi::Error) -> Self {
+        Response {
+            code: HttpCode::InternalServerError,
+            headers: HttpHeaders::with_type("text/plain"),
+            payload: Some(err.to_string().as_bytes().to_vec())
+        }
+    }
+
+    pub fn from_code (code: HttpCode, message: &str) -> Self {
+        Response {
+            code,
+            headers: HttpHeaders::with_type("text/plain"),
+            payload: Some(message.as_bytes().to_vec())
+        }
+    }
 }
 
 pub struct Request {

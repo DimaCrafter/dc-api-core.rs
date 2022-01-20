@@ -2,4 +2,6 @@
 .vscode/
 *.node
 Cargo.lock
+yarn.lock
 target/
+node_modules/

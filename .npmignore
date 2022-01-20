@@ -1,10 +1,11 @@
-target
+target/
 Cargo.lock
-.cargo
-.github
-npm
-.eslintrc
-.prettierignore
+.cargo/
+.github/
+.vscode/
+.idea/
+npm/
 rustfmt.toml
 yarn.lock
 *.node
+test/

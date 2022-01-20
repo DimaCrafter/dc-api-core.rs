@@ -45,28 +45,15 @@ impl Router {
                     let ctx: &mut Option<ControllerHttpContext> = env.unwrap(&js_ctx).unwrap();
                     let mut ctx = ctx.take().unwrap();
                     serialize_object(env, &mut ctx, call_result);
-                    return Response {
-                        code: ctx.res_code,
-                        headers: ctx.res_headers,
-                        payload: ctx.res_payload
-                    }
+                    return ctx.into_response();
                 }
                 Err(err) => {
-                    // TODO: proper error reporting
-                    return Response {
-                        code: HttpCode::InternalServerError,
-                        headers: HttpHeaders::empty(),
-                        payload: Some(err.to_string().as_bytes().to_vec())
-                    }
+                    return Response::from_error(err);
                 }
             }
         }
 
-        return Response {
-            code: HttpCode::NotFound,
-            headers: HttpHeaders::empty(),
-            payload: None
-        };
+        return Response::from_code(HttpCode::NotFound, "API endpoint not found");
     }
 }
 
