@@ -3,28 +3,26 @@ mod http;
 mod utils;
 mod routing;
 mod context;
+mod parsers;
 
 #[macro_use]
 extern crate napi_derive;
 
 use std::collections::HashMap;
-use std::error::Error;
-use futures::future::{Abortable, AbortHandle, err};
+use futures::future::{Abortable, AbortHandle};
 use napi::{Env, JsFunction, JsObject, JsUnknown, Result, Status};
 use napi::bindgen_prelude::Undefined;
-use napi::sys::napi_env;
 use napi::threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use tokio::net::TcpListener;
 use crate::http1::Http1Engine;
 use crate::http::{ParsedHttpConnection, proceed_connection};
-use crate::http::codes::HttpCode;
-use crate::http::entity::{HttpHeaders, Response};
 use crate::routing::Router;
 use crate::utils::callers::ControllerActionCaller;
 use crate::utils::camel_to_kebab;
 use crate::utils::controller::Controller;
 use crate::utils::json::JSON;
-use crate::utils::macros::{js_err, js_get_string};
+use crate::utils::macros::js_err;
+
 
 pub static mut APP: Option<App> = None;
 #[inline]
@@ -72,6 +70,7 @@ impl App {
     }
 }
 
+#[allow(dead_code)]
 #[napi]
 fn start_app (env: Env, bind_address: String, js_callback: JsFunction) -> Result<JsObject> {
     unsafe {
@@ -116,6 +115,7 @@ fn start_app (env: Env, bind_address: String, js_callback: JsFunction) -> Result
     return Ok(promise);
 }
 
+#[allow(dead_code)]
 #[napi]
 fn stop_app () {
     let app = get_app();
@@ -125,11 +125,13 @@ fn stop_app () {
     }
 }
 
+#[allow(dead_code)]
 #[napi]
 fn add_controller (env: Env, controller_name: String, controller_class: JsFunction) -> Result<Undefined> {
     return get_app().register_controller(env, controller_name, controller_class);
 }
 
+#[allow(dead_code)]
 #[napi]
 fn register_route (env: Env, pattern: String, handler: JsUnknown) -> Result<Undefined> {
     return get_app().register_route(env, pattern, handler);

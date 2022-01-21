@@ -1,7 +1,6 @@
-
 use std::net::IpAddr;
-use napi::{Result, JsObject, Env, CallContext, Either, JsUndefined, JsString, JsUnknown, ValueType, Status, Property, JsNumber, JsBoolean, JsBuffer};
-use crate::{http::{entity::{HttpHeaders, Response}, ParsedHttpConnection, codes::HttpCode}, utils::macros::{js_get_string, js_err}, get_app};
+use napi::{Result, JsObject, Env, CallContext, Either, JsUndefined, JsString, JsUnknown, ValueType, Status, Property, JsNumber, JsBoolean, JsBuffer, NapiValue};
+use crate::{http::{entity::{HttpHeaders, Response}, ParsedHttpConnection, codes::HttpCode}, utils::macros::{js_get_string, js_err}, get_app, parsers::query_string::parse_query_string};
 
 pub struct ControllerHttpContext {
     pub req_headers: HttpHeaders,
@@ -112,17 +111,16 @@ fn ctx_address (call_ctx: CallContext) -> Result<JsObject> {
 
 #[js_function(0)]
 fn ctx_query (call_ctx: CallContext) -> Result<JsObject> {
-    let ctx = extract_ctx(&call_ctx)?;
-    let mut obj = call_ctx.env.create_object()?;
-
-    for part in ctx.query_string.split('&') {
-        if let Some((name, value)) = part.split_once('=') {
-            obj.set_named_property(name, call_ctx.env.create_string(value)?)?;
-        } else {
-            obj.set_named_property(part, call_ctx.env.get_boolean(true)?)?;
-        }
+    let mut this: JsObject = call_ctx.this()?;
+    let cache: JsUnknown = this.get_named_property("_query")?;
+    if let ValueType::Object = cache.get_type()? {
+        return Ok(unsafe { cache.cast() });
     }
 
+    let ctx = extract_ctx(&call_ctx)?;
+    let obj = parse_query_string(&call_ctx.env, &ctx.query_string)?;
+
+    this.set_named_property("_query", &obj)?;
     return Ok(obj);
 }
 
@@ -189,4 +187,55 @@ fn serialize_pure (ctx: &mut ControllerHttpContext, data: JsUnknown) -> Result<(
     }
 
     return Ok(());
+}
+
+pub enum JsCreateType {
+    None,
+    Object,
+    Array
+}
+
+pub fn js_access_object (env: &Env, obj: &JsObject, path: &[&str], create: JsCreateType) -> Result<JsObject> {
+    let mut result: JsObject = unsafe { std::mem::transmute_copy(obj) };
+    for part in path {
+        match result.get_named_property(part) {
+            Ok(tmp) => result = tmp,
+            Err(err) => {
+                match create {
+                    JsCreateType::None => {
+                        return Err(err);
+                    }
+                    JsCreateType::Object => {
+                        let tmp = env.create_object()?;
+                        result.set_named_property(part, &tmp)?;
+                        result = tmp;
+                    }
+                    JsCreateType::Array => {
+                        let tmp = env.create_empty_array()?;
+                        result.set_named_property(part, &tmp)?;
+                        result = tmp;
+                    }
+                }
+            }
+        }
+    }
+
+    return Ok(result);
+}
+
+pub fn js_set_member (env: &Env, obj: &mut JsObject, path: Vec<&str>, value: JsUnknown) -> Result<()> {
+    let mut last_index = path.len();
+    if last_index == 1 {
+        return obj.set_named_property(path[0], value);
+    } else {
+        last_index -= 1;
+        let prop = path[last_index];
+        if prop == "" {
+            let mut target = js_access_object(env, obj, &path[0..last_index], JsCreateType::Array)?;
+            return target.set_element(target.get_array_length_unchecked()?, value);
+        } else {
+            let mut target = js_access_object(env, obj, &path[0..last_index], JsCreateType::Object)?;
+            return target.set_named_property(path[last_index], value);
+        }
+    }
 }

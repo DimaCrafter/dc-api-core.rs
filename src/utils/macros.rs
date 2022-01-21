@@ -68,3 +68,12 @@ pub fn js_get_error_message (env: &Env, is_full: bool) -> Result<String> {
     let js_message = js_message.into_utf8()?;
     return Ok(js_message.into_owned()?);
 }
+
+#[macro_export]
+macro_rules! static_regex {
+    ($name:ident, $regex:literal) => {
+        lazy_static::lazy_static! {
+            static ref $name: regex::Regex = regex::Regex::new($regex).unwrap();
+        }
+    };
+}
