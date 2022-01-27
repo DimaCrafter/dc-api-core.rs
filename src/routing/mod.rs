@@ -1,12 +1,10 @@
-use std::time::Instant;
 use napi::bindgen_prelude::Undefined;
 use napi::{Result, Env, JsObject, JsUnknown, ValueType, Status, JsFunction};
 use crate::context::{ControllerHttpContext, serialize_object};
 use crate::http::ParsedHttpConnection;
-use crate::utils::callers::ActionCaller;
-use crate::http::entity::{Request, Response, HttpHeaders};
+use crate::http::entity::Response;
 use crate::http::codes::HttpCode;
-use crate::{App, ControllerActionCaller, js_err, context::create_http_context, get_app};
+use crate::{App, ActionCaller, js_err, context::create_http_context};
 
 pub struct Router {
     pub routes: Vec<Route>
@@ -20,7 +18,7 @@ impl Router {
     }
 
     #[inline]
-    pub fn register (&mut self, pattern: String, caller: Box<dyn ActionCaller>) {
+    pub fn register (&mut self, pattern: String, caller: ActionCaller) {
         self.routes.push(Route::new(pattern, caller));
     }
 
@@ -37,7 +35,7 @@ impl Router {
     pub fn dispatch (&self, connection: &mut ParsedHttpConnection, env: &Env) -> Response {
         let req = connection.req.as_ref().unwrap();
         if let Some((route, params)) = self.match_path(&req.path, env) {
-            let mut js_ctx = create_http_context(env, connection).unwrap();
+            let mut js_ctx = create_http_context(env, connection, route.caller.owner.as_ref()).unwrap();
             js_ctx.set_named_property("params", params).unwrap();
 
             match route.caller.call(env, &js_ctx) {
@@ -59,11 +57,11 @@ impl Router {
 
 pub struct Route {
     pub matcher: PathMatcher,
-    pub caller: Box<dyn ActionCaller>
+    pub caller: ActionCaller
 }
 
 impl Route {
-    pub fn new (pattern: String, caller: Box<dyn ActionCaller>) -> Self {
+    pub fn new (pattern: String, caller: ActionCaller) -> Self {
         return Route {
             matcher: PathMatcher::from_pattern(pattern),
             caller
@@ -178,7 +176,7 @@ impl App {
                 caller = caller_opt.unwrap();
             }
             ValueType::Function => {
-                caller = ControllerActionCaller::new(env, unsafe { handler.cast::<JsFunction>() });
+                caller = ActionCaller::new(env, unsafe { handler.cast::<JsFunction>() }, None);
             }
             _ => {
                 return js_err(Status::InvalidArg, "Request handler can be only String or Function");

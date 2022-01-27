@@ -5,3 +5,4 @@ Cargo.lock
 yarn.lock
 target/
 node_modules/
+.DS_Store

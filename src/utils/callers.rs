@@ -1,27 +1,21 @@
-use napi::{Result, JsFunction, JsObject, JsUnknown, NapiRaw, Ref, Env, bindgen_prelude::FromNapiValue};
-
-use crate::utils::macros::{js_err, js_get_string};
-
+use napi::{Result, JsFunction, JsObject, JsUnknown, Ref, Env};
+use crate::utils::macros::js_err;
 use super::macros::js_get_error_message;
 
-pub trait ActionCaller {
-    fn call (&self, env: &Env, ctx: &JsObject) -> Result<JsUnknown>;
+pub struct ActionCaller {
+    method: Ref<()>,
+    pub(crate) owner: Option<Ref<()>>
 }
 
-pub struct ControllerActionCaller {
-    method: Ref<()>
-}
-
-impl ControllerActionCaller {
-    pub fn new (env: Env, method: JsFunction) -> Box<Self> {
-        Box::new(ControllerActionCaller {
-            method: env.create_reference(method).unwrap()
-        })
+impl ActionCaller {
+    pub fn new (env: Env, method: JsFunction, owner: Option<Ref<()>>) -> Self {
+        ActionCaller {
+            method: env.create_reference(method).unwrap(),
+            owner
+        }
     }
-}
 
-impl ActionCaller for ControllerActionCaller {
-    fn call (&self, env: &Env, ctx: &JsObject) -> Result<JsUnknown> {
+    pub fn call (&self, env: &Env, ctx: &JsObject) -> Result<JsUnknown> {
         let method: JsFunction = env.get_reference_value(&self.method)?;
 
         match method.call_without_args(Some(ctx)) {

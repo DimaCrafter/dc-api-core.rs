@@ -1,14 +1,14 @@
-use std::any::Any;
 use napi::{Env, JsFunction, JsObject, JsString, JsUnknown, Ref, Result};
-use crate::{App, ControllerActionCaller, camel_to_kebab, js_get_class_prototype, js_get_str, get_app};
-use crate::utils::callers::ActionCaller;
+use crate::{App, ActionCaller, camel_to_kebab, js_get_class_prototype, js_get_str};
 
 pub struct Controller(pub(crate) Ref<()>);
 impl Controller {
-    pub fn get_caller (&self, env: Env, action_name: &str) -> Result<Box<ControllerActionCaller>> {
+    pub fn get_caller (&self, env: Env, action_name: &str) -> Result<ActionCaller> {
         let inner: JsObject = env.get_reference_value(&self.0)?;
         let action = inner.get_named_property::<JsFunction>(action_name)?;
-        return Ok(ControllerActionCaller::new(env, action));
+
+        let owner: JsObject = env.get_reference_value_unchecked(&self.0)?;
+        return Ok(ActionCaller::new(env, action, Some(env.create_reference(owner)?)));
     }
 }
 

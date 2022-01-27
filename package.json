@@ -1,6 +1,6 @@
 {
 	"name": "dc-api-core",
-	"version": "0.4.0",
+	"version": "0.4.0-test1",
 	"main": "index.js",
 	"napi": {
 		"name": "@dpwd/dc-api-core",

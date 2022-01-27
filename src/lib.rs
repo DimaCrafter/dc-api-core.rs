@@ -10,14 +10,14 @@ extern crate napi_derive;
 
 use std::collections::HashMap;
 use futures::future::{Abortable, AbortHandle};
-use napi::{Env, JsFunction, JsObject, JsUnknown, Result, Status};
+use napi::{Env, JsFunction, JsObject, JsUnknown, Result, Status, Ref};
 use napi::bindgen_prelude::Undefined;
 use napi::threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use tokio::net::TcpListener;
 use crate::http1::Http1Engine;
 use crate::http::{ParsedHttpConnection, proceed_connection};
 use crate::routing::Router;
-use crate::utils::callers::ControllerActionCaller;
+use crate::utils::callers::ActionCaller;
 use crate::utils::camel_to_kebab;
 use crate::utils::controller::Controller;
 use crate::utils::json::JSON;
@@ -36,11 +36,12 @@ pub struct App {
 
     router: Router,
     controllers: HashMap<String, Controller>,
-    dispatch_request: ThreadsafeFunction<ParsedHttpConnection>
+    dispatch_request: ThreadsafeFunction<ParsedHttpConnection>,
+    patch_context: Ref<()>
 }
 
 impl App {
-    fn new (env: Env) -> Result<Self> {
+    fn new (env: Env, patch_context: JsFunction) -> Result<Self> {
         let dispatch_request_closure = env.create_function_from_closure(
             "dispatch_request",
             |ctx| ctx.get::<JsUnknown>(0)
@@ -51,6 +52,7 @@ impl App {
             json: JSON::init(env)?,
             listener_handle: None,
             dispatch_request,
+            patch_context: env.create_reference(patch_context)?,
 
             controllers: HashMap::new(),
             router: Router::empty()
@@ -72,17 +74,17 @@ impl App {
 
 #[allow(dead_code)]
 #[napi]
-fn start_app (env: Env, bind_address: String, js_callback: JsFunction) -> Result<JsObject> {
+fn start_app (env: Env, bind_address: String, on_listen: JsFunction, patch_context: JsFunction) -> Result<JsObject> {
     unsafe {
         if APP.is_some() {
             return js_err(Status::GenericFailure, "Server already started");
         }
 
-        APP = Some(App::new(env)?);
+        APP = Some(App::new(env, patch_context)?);
     }
 
-    let js_callback = env.create_threadsafe_function(
-        &js_callback,
+    let on_listen = env.create_threadsafe_function(
+        &on_listen,
         0,
         |_ctx| Ok(Vec::<JsUnknown>::new())
     )?;
@@ -90,7 +92,7 @@ fn start_app (env: Env, bind_address: String, js_callback: JsFunction) -> Result
     let connection_loop = async move {
         match TcpListener::bind(bind_address).await {
             Ok(listener) => {
-                js_callback.call(Ok(()), ThreadsafeFunctionCallMode::NonBlocking);
+                on_listen.call(Ok(()), ThreadsafeFunctionCallMode::NonBlocking);
 
                 loop {
                     let socket = listener.accept().await.unwrap();
@@ -127,7 +129,7 @@ fn stop_app () {
 
 #[allow(dead_code)]
 #[napi]
-fn add_controller (env: Env, controller_name: String, controller_class: JsFunction) -> Result<Undefined> {
+fn register_controller (env: Env, controller_name: String, controller_class: JsFunction) -> Result<Undefined> {
     return get_app().register_controller(env, controller_name, controller_class);
 }
 

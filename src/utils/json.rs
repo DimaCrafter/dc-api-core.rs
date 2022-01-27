@@ -1,5 +1,4 @@
 use napi::{Env, JsFunction, JsObject, JsString, JsUnknown, Ref, Result};
-use crate::js_get_str;
 
 pub struct JSON {
     js_stringify: Ref<()>

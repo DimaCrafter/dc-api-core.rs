@@ -1,5 +1,5 @@
 use std::net::IpAddr;
-use napi::{Result, JsObject, Env, CallContext, Either, JsUndefined, JsString, JsUnknown, ValueType, Status, Property, JsNumber, JsBoolean, JsBuffer, NapiValue};
+use napi::{Result, JsObject, Env, CallContext, Either, JsUndefined, JsString, JsUnknown, ValueType, Status, Property, JsNumber, JsBoolean, JsBuffer, JsFunction, Ref};
 use crate::{http::{entity::{HttpHeaders, Response}, ParsedHttpConnection, codes::HttpCode}, utils::macros::{js_get_string, js_err}, get_app, parsers::query_string::parse_query_string};
 
 pub struct ControllerHttpContext {
@@ -21,8 +21,9 @@ impl ControllerHttpContext {
     }
 }
 
-fn create_base_context<T: 'static> (env: &Env, ctx: T) -> Result<JsObject> {
+fn create_base_context<T: 'static> (env: &Env, ctx: T, controller: Option<&Ref<()>>) -> Result<JsObject> {
     let mut this = env.create_object()?;
+
     this.create_named_method("header", ctx_header)?;
     this.create_named_method("send", ctx_send)?;
 
@@ -31,8 +32,15 @@ fn create_base_context<T: 'static> (env: &Env, ctx: T) -> Result<JsObject> {
         Property::new("query")?.with_getter(ctx_query)
     ])?;
 
-    env.wrap::<Option<T>>(&mut this, Some(ctx))?;
+    let patch_context: JsFunction = env.get_reference_value_unchecked(&get_app().patch_context)?;
+    if let Some(controller_ref) = controller {
+        let controller_obj: JsObject = env.get_reference_value_unchecked(controller_ref)?;
+        this = unsafe { patch_context.call(None, &[this, controller_obj])?.cast() };
+    } else {
+        this = unsafe { patch_context.call(None, &[this])?.cast() };
+    }
 
+    env.wrap::<Option<T>>(&mut this, Some(ctx))?;
     return Ok(this);
 }
 
@@ -42,7 +50,7 @@ fn extract_ctx<'a> (call_ctx: &'a CallContext) -> Result<&'a mut ControllerHttpC
     return Ok(ctx.as_mut().unwrap());
 }
 
-pub fn create_http_context (env: &Env, connection: &mut ParsedHttpConnection) -> Result<JsObject> {
+pub fn create_http_context (env: &Env, connection: &mut ParsedHttpConnection, controller: Option<&Ref<()>>) -> Result<JsObject> {
     let req = connection.req.take().unwrap();
 
     let query_string = match req.path.split_once('?') {
@@ -59,7 +67,7 @@ pub fn create_http_context (env: &Env, connection: &mut ParsedHttpConnection) ->
         res_code: HttpCode::OK
     };
 
-    let this = create_base_context(env, ctx)?;
+    let this = create_base_context(env, ctx, controller)?;
     return Ok(this);
 }
 
