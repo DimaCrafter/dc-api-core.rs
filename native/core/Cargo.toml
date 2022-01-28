@@ -15,7 +15,7 @@ async-trait = "0.1.52"
 serde_json = "1.0.74"
 regex = "1.5.4"
 lazy_static = "1.4.0"
-dc_macro = { path = "./dc_macro" }
+dc_macro = { path = "../macro" }
 
 [build-dependencies]
 napi-build = "1.2.1"

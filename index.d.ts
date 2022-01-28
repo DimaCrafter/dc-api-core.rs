@@ -18,7 +18,7 @@ export class BaseController<SubType> {
 	/** Unset response header */
 	header (name: string, value: null): void;
 
-	/** Contains all fiels and methods of current controller */
+	/** Contains all fields and methods of current controller */
 	controller: UnBase<this, SubType>;
 }
 
@@ -32,7 +32,7 @@ export class HttpController extends BaseController<HttpController> {
 	 * Send response to client and close connection
 	 * @param data Payload to send
 	 * @param code HTTP response code, by default `200`
-	 * @param isPure If `true`, then data will sended without transformations, otherwise data will be serialized, by default `false`
+	 * @param isPure If `true`, then data will send without transformations, otherwise data will be serialized, by default `false`
 	 */
 	send (data: any, code?: number, isPure?: boolean): void;
 

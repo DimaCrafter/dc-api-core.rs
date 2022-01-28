@@ -1,6 +1,2 @@
-class HttpController {}
-class SocketController {}
-module.exports = {
-	HttpController,
-	SocketController
-}
+export class HttpController {}
+export class SocketController {}

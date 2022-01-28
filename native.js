@@ -1,47 +1,45 @@
-const { existsSync } = require('fs')
-const Path = require('path')
+import { existsSync } from 'fs'
+import { createRequire } from 'module';
+import Path from 'path'
+import { fileURLToPath } from 'url';
 
-function loadBinding (triple) {
-	try {
-		if (existsSync(Path.join(__dirname, '@dpwd/dc-api-core.' + triple + '.node'))) {
-			module.exports = require('./@dpwd/dc-api-core.' + triple + '.node')
-		} else {
-			module.exports = require('@dpwd/dc-api-core-' + triple)
-		}
-	} catch (err) {
-		console.log('Can`t load dc-api-core binary: ' + err); // todo: use log module
-		process.exit(-1);
+const bindings = {
+	win32: {
+		x64: 'win32-x64-msvc'
+	},
+	darwin: {
+		x64: 'darwin-x64'
+	},
+	linux: {
+		x64: 'linux-x64-gnu'
 	}
+};
+
+// todo: Use log module
+const platform = bindings[process.platform];
+if (!platform) {
+	console.log(`Can't load dc-api-core binary: platform ${process.platform} is unsupported`);
+	process.exit(-1);
 }
 
-switch (process.platform) {
-	case 'win32':
-		switch (process.arch) {
-			case 'x64':
-				loadBinding('win32-x64-msvc');
-				break;
-			default:
-				throw new Error(`Unsupported architecture on Windows: ${process.arch}`)
-		}
-		break
-	case 'darwin':
-		switch (process.arch) {
-			case 'x64':
-				loadBinding('darwin-x64');
-				break;
-			default:
-				throw new Error(`Unsupported architecture on macOS: ${process.arch}`);
-		}
-		break
-	case 'linux':
-		switch (process.arch) {
-			case 'x64':
-				loadBinding('linux-x64-gnu');
-				break;
-			default:
-				throw new Error(`Unsupported architecture on Linux: ${process.arch}`)
-		}
-		break;
-	default:
-		throw new Error('Unsupported platform: ' + process.platform)
+const triple = platform[process.arch];
+if (!triple) {
+	console.log(`Can't load dc-api-core binary: architecture ${process.arch} is unsupported on ${process.platform}`);
+	process.exit(-1);
 }
+
+let binding;
+try {
+	const localPath = Path.join(Path.dirname(fileURLToPath(import.meta.url)), 'native', 'bin', 'dc-api-core.' + triple + '.node');
+	if (existsSync(localPath)) {
+		const require = createRequire(import.meta.url);
+		binding = require(localPath);
+	} else {
+		binding = await import('@dpwd/dc-api-core-' + triple);
+	}
+} catch (err) {
+	console.log('Can`t load dc-api-core binary: ' + err);
+	process.exit(-1);
+}
+
+export default binding

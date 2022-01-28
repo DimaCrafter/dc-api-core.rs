@@ -1,5 +1,5 @@
 .idea/
-.vscode/
+.vscode/launch.json
 *.node
 Cargo.lock
 yarn.lock

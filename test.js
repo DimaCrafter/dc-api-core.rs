@@ -1,6 +1,7 @@
-const { HttpController, SocketController } = require('.');
-const { registerController, registerRoute, startApp, stopApp } = require('./native');
-const config = require('./test/config.json');
+import { HttpController, SocketController } from './index.js'
+import App from './native.js'
+// import config from './test/config.json'
+const config = { port: 6080 };
 
 function onListen () {
     console.log('Server started on port ' + config.port);
@@ -36,11 +37,11 @@ function patchContext (ctx, controller) {
     return ctx;
 }
 
-startApp('0.0.0.0:' + config.port, onListen, patchContext).then(() => {
+App.startApp('0.0.0.0:' + config.port, onListen, patchContext).then(() => {
     console.log('Dispose!');
 });
 
-registerController('Test', class Test extends HttpController {
+App.registerController('Test', class Test extends HttpController {
     exampleEndpoint () {
         return 'result';
     }
@@ -64,7 +65,7 @@ registerController('Test', class Test extends HttpController {
     }
 });
 
-registerController('TestEndpoint', class TestEndpoint extends HttpController {
+App.registerController('TestEndpoint', class TestEndpoint extends HttpController {
 	ping () {
 		return 'pong';
 	}
@@ -93,5 +94,5 @@ registerController('TestEndpoint', class TestEndpoint extends HttpController {
     }
 });
 
-registerRoute('/test-custom/h{hash}.json', 'TestEndpoint.hash');
-registerRoute('/shutdown', () => process.exit(0));
+App.registerRoute('/test-custom/h{hash}.json', 'TestEndpoint.hash');
+App.registerRoute('/shutdown', () => process.exit(0));
