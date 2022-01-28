@@ -43,7 +43,7 @@ pub async fn proceed_connection<Http: HttpEngine + Send> (socket: (TcpStream, So
             connection.respond(Response {
                 code: res_code,
                 headers: HttpHeaders::empty(),
-                payload: None
+                payload: ResponseType::NoContent
             }).await;
         }
         ParsingResult::Invalid => {

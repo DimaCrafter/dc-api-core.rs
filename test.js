@@ -83,6 +83,14 @@ registerController('TestEndpoint', class TestEndpoint extends HttpController {
 
 	_private () { return 'secured content'; }
 	exposedPrivate () { return this.controller._private(); }
+
+    testDrop () {
+        this.drop();
+    }
+
+    testRedirect () {
+        this.redirect('/test-redirect');
+    }
 });
 
 registerRoute('/test-custom/h{hash}.json', 'TestEndpoint.hash');

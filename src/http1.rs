@@ -6,7 +6,7 @@ use tokio::net::TcpStream;
 use async_trait::async_trait;
 use dc_macro::assert_stream;
 use crate::http::codes::HttpCode;
-use crate::http::entity::{HttpConnection, HttpEngine, HttpHeaders, HttpMethod, ParsingResult, Request, Response};
+use crate::http::entity::{HttpConnection, HttpEngine, HttpHeaders, HttpMethod, ParsingResult, Request, Response, ResponseType};
 use crate::utils::stream::StreamUtils;
 
 #[derive(Copy, Clone)]
@@ -103,6 +103,10 @@ impl HttpConnection for Http1Connection {
     }
 
     async fn respond (&mut self, res: Response) -> Result<(), Error> {
+        if let ResponseType::Drop = res.payload {
+            return self.stream.shutdown().await;
+        }
+
         self.stream.write(b"HTTP/1.").await?;
         self.stream.write_u8(self.version_minor as u8).await?;
         self.stream.write_u8(' ' as u8).await?;
@@ -119,9 +123,8 @@ impl HttpConnection for Http1Connection {
             self.stream.write(header.value.as_bytes()).await?;
         }
 
-        self.stream.write(b"\r\n").await?;
-        if let Some(payload) = res.payload {
-            self.stream.write(b"\r\n").await?;
+        self.stream.write(b"\r\n\r\n").await?;
+        if let ResponseType::Payload(payload) = res.payload {
             self.stream.write(&payload).await?;
         }
 

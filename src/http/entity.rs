@@ -115,7 +115,7 @@ pub trait HttpConnection: Send + Sync {
 pub struct Response {
     pub code: HttpCode,
     pub headers: HttpHeaders,
-    pub payload: Option<Vec<u8>>
+    pub payload: ResponseType
 }
 
 impl Response {
@@ -123,7 +123,7 @@ impl Response {
         Response {
             code: HttpCode::InternalServerError,
             headers: HttpHeaders::with_type("text/plain"),
-            payload: Some(err.to_string().as_bytes().to_vec())
+            payload: ResponseType::Payload(err.to_string().as_bytes().to_vec())
         }
     }
 
@@ -131,7 +131,7 @@ impl Response {
         Response {
             code,
             headers: HttpHeaders::with_type("text/plain"),
-            payload: Some(message.as_bytes().to_vec())
+            payload: ResponseType::Payload(message.as_bytes().to_vec())
         }
     }
 }
@@ -140,4 +140,10 @@ pub struct Request {
     pub path: String,
     pub headers: HttpHeaders,
     pub method: HttpMethod,
+}
+
+pub enum ResponseType {
+    NoContent,
+    Payload(Vec<u8>),
+    Drop
 }

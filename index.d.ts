@@ -35,6 +35,11 @@ export class HttpController extends BaseController<HttpController> {
 	 * @param isPure If `true`, then data will sended without transformations, otherwise data will be serialized, by default `false`
 	 */
 	send (data: any, code?: number, isPure?: boolean): void;
+
+	/** Drop the connection without responding to the request */
+	drop (): void;
+	/** Redirect user to specified URL */
+	redirect (url: string): void;
 }
 
 export class SocketController extends BaseController<SocketController> {

@@ -29,7 +29,8 @@ export function request (path, type, payload) {
 		res.on('end', () => {
 			resolve({
 				code: res.statusCode,
-				message: Buffer.concat(body)
+				message: Buffer.concat(body),
+				headers: res.headers
 			});
 		});
 	});
@@ -42,13 +43,18 @@ export function request (path, type, payload) {
 }
 
 /**
+ * @typedef {object} RequestSchema
+ * @property {string} path Request path
+ * @property {number} code Excepted response HTTP-code
+ * @property {object} [resHeaders] Excepted response headers
+ * @property {any} message Excepted response object
+ */
+
+/**
  * Send request and compare plaintext response
  * @param {import('tape').Test} t Testing context
  * @param {String} label Test case message
- * @param {Object} schema Request test schema
- * @param {String} schema.path Request path
- * @param {Number} schema.code Excepted response HTTP-code
- * @param {*} schema.message Excepted response text
+ * @param {RequestSchema} schema Request test schema
  */
 export async function testPlain (t, label, schema) {
 	const response = await request(schema.path, 'plain').then(result => {
@@ -56,7 +62,7 @@ export async function testPlain (t, label, schema) {
 		return result;
 	});
 
-	t.deepEqual(response, { code: schema.code, message: schema.message }, label);
+	testResponse(t, label, response, schema);
 }
 
 /**
@@ -82,7 +88,28 @@ export async function testJSON (t, label, schema) {
 		return result;
 	});
 
-	t.deepEqual(response, { code: schema.code, message: schema.message }, label);
+	testResponse(t, label, response, schema);
+}
+
+function testResponse (t, label, response, schema) {
+	const fixture = {
+		code: schema.code,
+		message: schema.message
+	};
+
+	if (schema.resHeaders) {
+		const filteredHeaders = {};
+		for (const key in schema.resHeaders) {
+			filteredHeaders[key] = response.headers[key];
+		}
+
+		response.headers = filteredHeaders;
+		fixture.headers = schema.resHeaders;
+	} else {
+		delete response.headers;
+	}
+
+	t.deepEqual(response, fixture, label);
 }
 
 export const readJSON = path => JSON.parse(readFileSync(path).toString());

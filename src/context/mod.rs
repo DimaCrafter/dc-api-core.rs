@@ -1,13 +1,13 @@
 use std::net::IpAddr;
 use napi::{Result, JsObject, Env, CallContext, Either, JsUndefined, JsString, JsUnknown, ValueType, Status, Property, JsNumber, JsBoolean, JsBuffer, JsFunction, Ref};
-use crate::{http::{entity::{HttpHeaders, Response}, ParsedHttpConnection, codes::HttpCode}, utils::macros::{js_get_string, js_err}, get_app, parsers::query_string::parse_query_string};
+use crate::{http::{entity::{HttpHeaders, Response, ResponseType}, ParsedHttpConnection, codes::HttpCode}, utils::macros::{js_get_string, js_err}, get_app, parsers::query_string::parse_query_string};
 
 pub struct ControllerHttpContext {
     pub req_headers: HttpHeaders,
     pub query_string: String,
     pub address: IpAddr,
     pub res_headers: HttpHeaders,
-    pub res_payload: Option<Vec<u8>>,
+    pub response: ResponseType,
     pub res_code: HttpCode
 }
 
@@ -16,7 +16,7 @@ impl ControllerHttpContext {
         Response {
             code: self.res_code,
             headers: self.res_headers,
-            payload: self.res_payload
+            payload: self.response
         }
     }
 }
@@ -25,8 +25,6 @@ fn create_base_context<T: 'static> (env: &Env, ctx: T, controller: Option<&Ref<(
     let mut this = env.create_object()?;
 
     this.create_named_method("header", ctx_header)?;
-    this.create_named_method("send", ctx_send)?;
-
     this.define_properties(&[
         Property::new("address")?.with_getter(ctx_address),
         Property::new("query")?.with_getter(ctx_query)
@@ -63,11 +61,14 @@ pub fn create_http_context (env: &Env, connection: &mut ParsedHttpConnection, co
         query_string: query_string.to_string(),
         address: connection.get_address(),
         res_headers: HttpHeaders::empty(),
-        res_payload: None,
+        response: ResponseType::NoContent,
         res_code: HttpCode::OK
     };
 
-    let this = create_base_context(env, ctx, controller)?;
+    let mut this = create_base_context(env, ctx, controller)?;
+    this.create_named_method("send", ctx_send)?;
+    this.create_named_method("drop", ctx_drop)?;
+    this.create_named_method("redirect", ctx_redirect)?;
     return Ok(this);
 }
 
@@ -158,13 +159,31 @@ fn ctx_send (call_ctx: CallContext) -> Result<JsUndefined> {
     return call_ctx.env.get_undefined();
 }
 
+#[js_function(0)]
+fn ctx_drop (call_ctx: CallContext) -> Result<JsUndefined> {
+    let ctx = extract_ctx(&call_ctx)?;
+    ctx.response = ResponseType::Drop;
+
+    return call_ctx.env.get_undefined();
+}
+
+#[js_function(1)]
+fn ctx_redirect (call_ctx: CallContext) -> Result<JsUndefined> {
+    let ctx = extract_ctx(&call_ctx)?;
+    ctx.response = ResponseType::NoContent;
+    ctx.res_code = HttpCode::Found;
+    ctx.res_headers.push("Location".to_string(), js_get_string(&call_ctx, 0)?);
+
+    return call_ctx.env.get_undefined();
+}
+
 pub fn serialize_object (env: &Env, ctx: &mut ControllerHttpContext, data: JsUnknown) -> Result<()> {
     let value = get_app().json.stringify(env, data)?;
     let value = value.into_bytes();
 
     ctx.res_headers.push_default("Content-Type".to_string(), "application/json".to_string());
     ctx.res_headers.push("Content-Length".to_string(), value.len().to_string());
-    ctx.res_payload = Some(value);
+    ctx.response = ResponseType::Payload(value);
 
     return Ok(());
 }
@@ -176,7 +195,7 @@ fn serialize_pure (ctx: &mut ControllerHttpContext, data: JsUnknown) -> Result<(
 
         ctx.res_headers.push_default("Content-Type".to_string(), "application/octet-stream".to_string());
         ctx.res_headers.push("Content-Length".to_string(), value.len().to_string());
-        ctx.res_payload = Some(value);
+        ctx.response = ResponseType::Payload(value);
     } else {
         match data.get_type()? {
             ValueType::String => {
@@ -186,7 +205,7 @@ fn serialize_pure (ctx: &mut ControllerHttpContext, data: JsUnknown) -> Result<(
 
                 ctx.res_headers.push_default("Content-Type".to_string(), "text/plain".to_string());
                 ctx.res_headers.push("Content-Length".to_string(), value.len().to_string());
-                ctx.res_payload = Some(value);
+                ctx.response = ResponseType::Payload(value);
             }
             _ => {
                 return js_err(Status::InvalidArg, "Unsupported response payload type");
