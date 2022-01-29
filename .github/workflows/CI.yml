@@ -104,17 +104,19 @@ jobs:
         COMMIT_NAME=$(git log -1 --pretty=%B)
 
         function publish {
-          cd $1
           if echo $COMMIT_NAME | grep "^Release .*\@next"; then
             npm publish --tag next --access public
           else
             npm publish --access public
           fi
-          cd $CWD
         }
 
+        publish
+
         for entry in ./npm/*/; do
-          publish $entry
+          cd $entry
+          publish
+          cd $CWD
         done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -19,7 +19,7 @@
 		"build": "napi build --platform --release --cargo-cwd ./native/core ./native/bin",
 		"build:debug": "napi build --platform --cargo-cwd ./native/core ./native/bin",
 
-		"prepublishOnly": "napi prepublish -t npm",
+		"prepublishOnly": "node npm/prepublish.js",
 		"version": "napi version",
 
 		"test": "cd test; node index.js; cd ..",
