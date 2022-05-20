@@ -1,10 +1,9 @@
-use napi::bindgen_prelude::Undefined;
-use napi::{Result, Env, JsObject, JsUnknown, ValueType, Status, JsFunction};
-use crate::context::{ControllerHttpContext, serialize_object};
+use napi::{Env, JsObject};
+use crate::context::http::{create_http_context, ControllerHttpContext, serialize_object};
 use crate::http::ParsedHttpConnection;
 use crate::http::entity::Response;
 use crate::http::codes::HttpCode;
-use crate::{App, ActionCaller, js_err, context::create_http_context};
+use crate::ActionCaller;
 
 pub struct Router {
     pub routes: Vec<Route>
@@ -153,37 +152,5 @@ impl PathMatcher {
         }
 
         return Some(params);
-    }
-}
-
-impl App {
-    pub fn register_route (&mut self, env: Env, pattern: String, handler: JsUnknown) -> Result<Undefined> {
-        let caller;
-        match handler.get_type()? {
-            ValueType::String => {
-                let handler_path = handler.coerce_to_string()?;
-                let handler_path = handler_path.into_utf8()?;
-                let handler_path = handler_path.as_str()?;
-                let mut handler_path = handler_path.split('.');
-
-                let controller_name = handler_path.next().unwrap();
-                let controller = self.controllers.get(controller_name);
-                if controller.is_none() { return js_err(Status::InvalidArg, "Controller not found") }
-
-                let action_name = handler_path.next().unwrap();
-                let caller_opt = controller.unwrap().get_caller(env, action_name);
-                if caller_opt.is_err() { return js_err(Status::InvalidArg, "Action not found") }
-                caller = caller_opt.unwrap();
-            }
-            ValueType::Function => {
-                caller = ActionCaller::new(env, unsafe { handler.cast::<JsFunction>() }, None);
-            }
-            _ => {
-                return js_err(Status::InvalidArg, "Request handler can be only String or Function");
-            }
-        }
-
-        self.router.register(pattern, caller);
-        return Ok(());
     }
 }

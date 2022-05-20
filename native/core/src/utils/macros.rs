@@ -10,7 +10,7 @@ pub fn js_get_string (ctx: &CallContext, i: usize) -> Result<String> {
 #[macro_export]
 macro_rules! js_get_str {
     ($name:ident, $source:expr) => {
-        let $name = $source?;
+        let $name: JsString = $source?;
         let $name = $name.into_utf8()?;
         let $name = $name.as_str()?;
     };
@@ -18,14 +18,21 @@ macro_rules! js_get_str {
 
 #[macro_export]
 macro_rules! js_get_class_prototype {
-    ($obj:expr) => {
-        unsafe { $obj.into_unknown().cast::<JsObject>() }
+    ($class:expr) => {
+        $class
             .get_named_property::<JsObject>("prototype")?
             .get_all_property_names(
                 napi::KeyCollectionMode::OwnOnly,
                 napi::KeyFilter::Configurable,
                 napi::KeyConversion::NumbersToStrings
             )?
+    };
+}
+
+#[macro_export]
+macro_rules! js_get_class_internal_proto {
+    ($class:expr) => {
+        $class.get_named_property::<JsObject>("__proto__")?
     };
 }
 

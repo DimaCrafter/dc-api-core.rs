@@ -1,6 +1,8 @@
 use core::slice;
 use std::io::Error;
 use std::net::{SocketAddr, IpAddr};
+use futures::TryFutureExt;
+use tokio::io::BufStream;
 use tokio::net::TcpStream;
 use async_trait::async_trait;
 use crate::http::codes::HttpCode;
@@ -13,8 +15,8 @@ pub enum HttpMethod {
 }
 
 impl HttpMethod {
-    pub fn from_str (method: String) -> Option<HttpMethod> {
-        match method.as_str() {
+    pub fn from_str (method: &str) -> Option<HttpMethod> {
+        match method {
             "GET" => Some(HttpMethod::GET),
             "POST" => Some(HttpMethod::POST),
             "OPTIONS" => Some(HttpMethod::OPTIONS),
@@ -23,11 +25,14 @@ impl HttpMethod {
     }
 }
 
+// TODO: &str
+#[derive(Debug)]
 pub struct HttpHeader {
     pub name: String,
     pub value: String
 }
 
+#[derive(Debug)]
 pub struct HttpHeaders {
     contents: Vec<HttpHeader>
 }
@@ -51,9 +56,12 @@ impl HttpHeaders {
     pub fn push (&mut self, name: String, value: String) {
         let lower_name = name.to_ascii_lowercase();
         if let Some(header) = self.contents.iter_mut().find(|h| h.name == lower_name) {
-            header.value = value;
+            header.value = value.trim_start().to_string();
         } else {
-            self.contents.push(HttpHeader { name: lower_name, value });
+            self.contents.push(HttpHeader {
+                name: lower_name,
+                value: value.trim_start().to_string()
+            });
         }
     }
 
@@ -93,8 +101,38 @@ impl<'a> IntoIterator for &'a HttpHeaders {
 }
 
 #[async_trait]
+pub trait HttpConnection: Send + Sync {
+    fn get_address (&self) -> IpAddr;
+    fn into_stream (self: Box<Self>) -> BufStream<TcpStream>;
+
+    async fn parse (&mut self) -> ParsingResult;
+    async fn respond (&mut self, res: Response) -> Result<(), Error>;
+    async fn disconnect (&mut self);
+}
+
+// TODO: DRY
+impl dyn HttpConnection {
+    pub async fn respond_js (&mut self, res: Response) -> napi::Result<()> {
+        return self
+            .respond(res)
+            .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))
+            .await;
+    }
+}
+impl dyn HttpConnection + Send {
+    pub async fn respond_js (&mut self, res: Response) -> napi::Result<()> {
+        return self
+            .respond(res)
+            .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))
+            .await;
+    }
+}
+
+pub type BoxedHttpConnection = Box<dyn HttpConnection + Send>;
+
+#[async_trait]
 pub trait HttpEngine {
-    async fn handle_connection (socket: (TcpStream, SocketAddr)) -> Box<dyn HttpConnection + Send>;
+    async fn handle_connection (socket: (TcpStream, SocketAddr)) -> BoxedHttpConnection;
 }
 
 pub enum ParsingResult {
@@ -102,14 +140,6 @@ pub enum ParsingResult {
     Partial,
     Error(HttpCode),
     Invalid
-}
-
-#[async_trait]
-pub trait HttpConnection: Send + Sync {
-    fn get_address (&self) -> IpAddr;
-    async fn parse (&mut self) -> ParsingResult;
-    async fn respond (&mut self, res: Response) -> Result<(), Error>;
-    async fn disconnect (&mut self);
 }
 
 pub struct Response {
@@ -134,16 +164,42 @@ impl Response {
             payload: ResponseType::Payload(message.as_bytes().to_vec())
         }
     }
+
+    pub fn from_status (code: HttpCode) -> Self {
+        Response {
+            code,
+            headers: HttpHeaders::empty(),
+            payload: ResponseType::NoContent
+        }
+    }
 }
 
 pub struct Request {
     pub path: String,
+    pub query: String,
     pub headers: HttpHeaders,
     pub method: HttpMethod,
+}
+
+impl Request {
+    pub fn new (method: HttpMethod, url_path: String) -> Self {
+        let (path, query) = match url_path.split_once('?') {
+            Some((path, query_string)) => (path.to_string(), query_string.to_string()),
+            None => (url_path, String::new())
+        };
+
+        Self {
+            path,
+            query,
+            method,
+            headers: HttpHeaders::empty()
+        }
+    }
 }
 
 pub enum ResponseType {
     NoContent,
     Payload(Vec<u8>),
+    Upgrade,
     Drop
 }

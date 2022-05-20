@@ -7,15 +7,18 @@ version = "0.4.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi = { version = "2.0.3", default-features = false, features = ["tokio_rt", "napi6", "serde-json"] }
-napi-derive = { version = "2.0.7", default-features = false, features = ["compat-mode"] }
-tokio = { version = "1.15.0", features = ["full"] }
-futures = "0.3.19"
-async-trait = "0.1.52"
-serde_json = "1.0.74"
-regex = "1.5.4"
-lazy_static = "1.4.0"
+async-trait = "0.1.53"
+base64 = "0.13.0"
 dc_macro = { path = "../macro" }
+futures = "0.3.21"
+lazy_static = "1.4.0"
+napi = { version = "2.3.1", default-features = false, features = ["tokio_rt", "napi6", "serde-json"] }
+napi-derive = { version = "2.3.0", default-features = false, features = ["compat-mode"] }
+regex = "1.5.5"
+sha1 = "0.10.1"
+tokio-tungstenite = "0.17.1"
+tokio = { version = "1.17.0", features = ["full"] }
+serde_json = "1.0.79"
 
 [build-dependencies]
 napi-build = "1.2.1"

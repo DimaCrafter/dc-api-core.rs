@@ -2,11 +2,11 @@ use std::io::Error;
 use std::net::{SocketAddr, IpAddr};
 use std::str::FromStr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufStream};
-use tokio::net::TcpStream;
+use tokio::net::{TcpStream, TcpSocket};
 use async_trait::async_trait;
 use dc_macro::assert_stream;
 use crate::http::codes::HttpCode;
-use crate::http::entity::{HttpConnection, HttpEngine, HttpHeaders, HttpMethod, ParsingResult, Request, Response, ResponseType};
+use crate::http::entity::{HttpConnection, HttpEngine, HttpMethod, ParsingResult, Request, Response, ResponseType, BoxedHttpConnection};
 use crate::utils::stream::StreamUtils;
 
 #[derive(Copy, Clone)]
@@ -14,7 +14,7 @@ pub struct Http1Engine;
 
 #[async_trait]
 impl HttpEngine for Http1Engine {
-    async fn handle_connection (socket: (TcpStream, SocketAddr)) -> Box<dyn HttpConnection + Send> {
+    async fn handle_connection (socket: (TcpStream, SocketAddr)) -> BoxedHttpConnection {
         return Box::new(Http1Connection::new(socket));
     }
 }
@@ -37,15 +37,14 @@ impl Http1Connection {
 
 #[async_trait]
 impl HttpConnection for Http1Connection {
-    fn get_address (&self) -> IpAddr {
-        self.address
-    }
+    fn get_address (&self) -> IpAddr { self.address }
+    fn into_stream (self: Box<Self>) -> BufStream<TcpStream> { self.stream }
 
     async fn parse (&mut self) -> ParsingResult {
         let method = self.stream.read_string_before(' ').await;
         if method.is_none() { return ParsingResult::Invalid; }
 
-        let method = HttpMethod::from_str(method.unwrap());
+        let method = HttpMethod::from_str(method.unwrap().as_str());
         if method.is_none() { return ParsingResult::Error(HttpCode::MethodNotAllowed) }
 
         let path = self.stream.read_string_before(' ').await;
@@ -56,11 +55,7 @@ impl HttpConnection for Http1Connection {
         assert_stream!(self.stream, "HTTP/1.", ParsingResult::Invalid);
         self.version_minor = self.stream.read_u8().await.unwrap() as char;
 
-        let mut req = Request {
-            path: path.unwrap(),
-            method: method.unwrap(),
-            headers: HttpHeaders::empty()
-        };
+        let mut req = Request::new(method.unwrap(), path.unwrap());
 
         assert_stream!(self.stream, "\r", ParsingResult::Invalid);
         loop {
@@ -83,7 +78,7 @@ impl HttpConnection for Http1Connection {
             req.headers.push(header_name, header_value.unwrap());
         }
 
-        if let HttpMethod::POST = req.method {
+        if matches!(req.method, HttpMethod::POST) {
             let length_header = req.headers.get("Content-Length");
             if length_header.is_none() { return ParsingResult::Error(HttpCode::BadRequest) }
 
@@ -126,6 +121,8 @@ impl HttpConnection for Http1Connection {
         self.stream.write(b"\r\n\r\n").await?;
         if let ResponseType::Payload(payload) = res.payload {
             self.stream.write(&payload).await?;
+        } else if let ResponseType::Upgrade = res.payload {
+            return Ok(());
         }
 
         self.stream.shutdown().await?;
@@ -133,6 +130,6 @@ impl HttpConnection for Http1Connection {
     }
 
     async fn disconnect (&mut self) {
-        self.stream.shutdown().await;
+        let _ = self.stream.shutdown().await;
     }
 }

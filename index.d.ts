@@ -45,3 +45,5 @@ export class HttpController extends BaseController<HttpController> {
 export class SocketController extends BaseController<SocketController> {
 	// todo
 }
+
+export type HttpHandler = (this: HttpController) => any;

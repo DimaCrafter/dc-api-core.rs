@@ -1,5 +1,6 @@
 import { HttpController, SocketController } from './index.js'
 import App from './native.js'
+import Router from './router.js'
 // import config from './test/config.json'
 const config = { port: 6080 };
 
@@ -41,31 +42,7 @@ App.startApp('0.0.0.0:' + config.port, onListen, patchContext).then(() => {
     console.log('Dispose!');
 });
 
-App.registerController('Test', class Test extends HttpController {
-    exampleEndpoint () {
-        return 'result';
-    }
-
-    _action () {
-        this.header('X-Test', '123');
-        return {
-            params: this.params,
-            host: this.header('Host'),
-            address: this.address,
-            query: this.query
-        };
-    }
-
-    errorTest () {
-        throw new Error("something unexpected");
-    }
-
-    old () {
-        this.send('NotFound', 404, true);
-    }
-});
-
-App.registerController('TestEndpoint', class TestEndpoint extends HttpController {
+Router.registerHttpController(class TestEndpoint extends HttpController {
 	ping () {
 		return 'pong';
 	}
@@ -94,5 +71,11 @@ App.registerController('TestEndpoint', class TestEndpoint extends HttpController
     }
 });
 
-App.registerRoute('/test-custom/h{hash}.json', 'TestEndpoint.hash');
-App.registerRoute('/shutdown', () => process.exit(0));
+Router.registerRoute('/test-custom/h{hash}.json', 'TestEndpoint.hash');
+Router.registerRoute('/shutdown', () => process.exit(0));
+
+Router.registerSocketController(class TestSocket extends SocketController {
+    hello (args) {
+        console.log(this, args);
+    }
+});

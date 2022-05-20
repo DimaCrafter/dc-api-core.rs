@@ -1,7 +1,15 @@
 use napi::{JsObject, Env, Result, JsUnknown};
 use crate::{static_regex, context::js_set_member};
 
-fn parse_query_path<'a, C: FnMut(&'a str) -> ()> (name: &'a str, collect_part: &mut C) -> Result<bool> {
+fn parse_query_path<'a, C> (name: &'a str, collect_part: &mut C) -> Result<bool>
+    where C: FnMut(&'a str) -> (),
+{
+    // /foo/bar?a[b][c]=123
+    // ... [c]
+    // ... [b]
+    // a
+
+    //  vec!["a", "b", "c"]
     static_regex!(OBJ_REGEX, r"(.*)\[([A-Za-z0-9_-]*)\]$");
 
     match OBJ_REGEX.captures(name) {

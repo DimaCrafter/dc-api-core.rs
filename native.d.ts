@@ -1,4 +1,4 @@
-import { BaseController, HttpController } from '.'
+import { BaseController, HttpController, HttpHandler, SocketController } from '.'
 
 type Class<T> = { new (...args: any[]): T };
 type ControllerContextPatcher<T extends BaseController<T>> = (ctx: T, controller?: object) => T;
@@ -18,21 +18,31 @@ export function startApp (address: string, onListen: () => void, patchContext: C
 export function stopApp (): void;
 
 /**
- * Register controller and routes for its actions
- * @param name Controller name
- * @param controllerClass Controller class
- */
-export function registerController<T extends BaseController<T>> (name: string, controllerClass: Class<T>): void;
-
-/**
- * Register request handler for path
- * @param path Route path pattern
- * @param handler Handler name in format `Controller.action`
- */
-export function registerRoute (path: string, handler: string): void;
-/**
- * Register request handler for path
- * @param path Route path pattern
+ * Register request handler for path with controller
+ * @param pattern Route path pattern
+ * @param controller Controller containing handler
  * @param handler Handler function
  */
-export function registerRoute (path: string, handler: (this: HttpController) => void): void;
+export function registerRoute (pattern: string, controller: HttpController, handler: HttpHandler): void;
+/**
+ * Register request handler for path
+ * @param pattern Route path pattern
+ * @param controller Pass `null` to register handler without controller
+ * @param handler Handler function
+ */
+export function registerRoute (pattern: string, controller: null, handler: HttpHandler): void;
+
+
+class SocketEndpoint {
+    path: string;
+    controller: SocketController;
+    handlers: SocketEventHandler[];
+}
+
+class SocketEventHandler {
+    event: string;
+    method (this: SocketController): void;
+}
+
+/** Register socket endpoint */
+export function registerSocket (endpoint: SocketEndpoint): void;

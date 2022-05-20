@@ -1,7 +1,7 @@
 pub mod stream;
 pub mod callers;
-pub mod controller;
 pub mod macros;
+pub mod js;
 pub mod json;
 
 pub fn camel_to_kebab (value: &String) -> String {
