@@ -1,6 +1,7 @@
 {
 	"rust-analyzer.linkedProjects": [
-		"./native/core/Cargo.toml",
-		"./native/macro/Cargo.toml"
+		"./core/Cargo.toml",
+		"./macro/Cargo.toml",
+		"./test/Cargo.toml"
 	]
 }

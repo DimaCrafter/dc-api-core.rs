@@ -1,8 +1,4 @@
 .idea/
-.vscode/launch.json
-*.node
-Cargo.lock
-yarn.lock
 target/
-node_modules/
 .DS_Store
+Cargo.lock
