@@ -101,10 +101,11 @@ impl PathMatcher {
                         if let Some(ch) = part_iter.next() {
                             let next_ch = path_iter.next();
                             if next_ch.is_none() || ch != next_ch.unwrap() {
-                                return None
+                                return None;
                             }
                         } else {
-                            break;
+                            if let None = path_iter.next() { break; }
+                            else { return None; }
                         }
                     }
 
@@ -118,6 +119,7 @@ impl PathMatcher {
                         i += 1;
                     }
 
+                    if offset >= path.len() { return None; }
                     let value = &path[(offset)..(offset + i)];
                     offset += i + 1;
 					params.insert(name.to_string(), value.to_string());
