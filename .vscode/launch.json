@@ -4,8 +4,8 @@
 		{
 			"type": "lldb",
 			"request": "launch",
-			"name": "Debug",
-			"program": "${workspaceFolder}/<your program>",
+			"name": "Debug \"test\"",
+			"program": "${workspaceFolder}/test/target/debug/dc-api-core-test",
 			"args": [],
 			"cwd": "${workspaceFolder}"
 		}
