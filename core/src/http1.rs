@@ -73,7 +73,7 @@ impl HttpConnection for Http1Connection {
             if header_value.is_none() { return ParsingResult::Error(HttpCode::RequestHeaderFieldsTooLarge) }
 
             let header_name = unsafe { String::from_utf8_unchecked(header_name) };
-            req.headers.set(header_name, header_value.unwrap());
+            req.headers.set_normal(header_name, header_value.unwrap());
         }
 
         if matches!(req.method, HttpMethod::POST) {

@@ -61,8 +61,9 @@ fn proceed_connection<Handler: AppHandler, Http: HttpEngine<Connection> + Send, 
 fn proceed_http<Handler: AppHandler, Connection: HttpConnection> (app_mutex: &Mutex<App>, mut connection: Connection, req: Request) -> Result<(), Error> {
     let res;
     let mut app = app_mutex.lock().unwrap();
+
     if let Some((endpoint, params)) = app.router.match_path(&req.path) {
-        let ctx = HttpContext::from(req, params);
+        let ctx = HttpContext::from(&connection, req, params);
         res = (endpoint.call)(ctx);
     } else {
         res = Response::from_code(HttpCode::NotFound, "API endpoint not found");

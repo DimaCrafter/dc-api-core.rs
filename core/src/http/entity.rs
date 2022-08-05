@@ -40,31 +40,30 @@ impl HttpHeaders {
         }
     }
 
-    pub fn with_type (content_type: &str) -> Self {
-        HttpHeaders {
-            contents: vec![HttpHeader {
-                name: "content-type".to_string(),
-                value: content_type.to_string()
-            }]
-        }
+    pub fn from_type (content_type: &str) -> Self {
+        HttpHeaders::empty().with_type(content_type)
+    }
+
+    pub fn with_type (mut self, content_type: &str) -> Self {
+        self.set_default("content-type".to_string(), content_type.to_string());
+        return self;
     }
 
     pub fn set (&mut self, name: String, value: String) {
-        let lower_name = name.to_ascii_lowercase();
-        if let Some(header) = self.contents.iter_mut().find(|h| h.name == lower_name) {
+        if let Some(header) = self.contents.iter_mut().find(|h| h.name == name) {
             header.value = value.trim_start().to_string();
         } else {
-            self.contents.push(HttpHeader {
-                name: lower_name,
-                value: value.trim_start().to_string()
-            });
+            self.contents.push(HttpHeader { name, value });
         }
     }
 
+    pub fn set_normal (&mut self, name: String, value: String) {
+        self.set(name.to_ascii_lowercase(), value.trim_start().to_string());
+    }
+
     pub fn set_default (&mut self, name: String, value: String) {
-        let lower_name = name.to_ascii_lowercase();
-        if let None = self.contents.iter_mut().find(|h| h.name == lower_name) {
-            self.contents.push(HttpHeader { name: lower_name, value });
+        if let None = self.contents.iter_mut().find(|h| h.name == name) {
+            self.contents.push(HttpHeader { name, value });
         }
     }
 
@@ -76,9 +75,8 @@ impl HttpHeaders {
     }
 
     pub fn get (&self, name: &str) -> Option<String> {
-        let lower_name = name.to_ascii_lowercase();
         for header in self {
-            if header.name == lower_name {
+            if header.name == name {
                 return Some(header.value.clone())
             }
         }
@@ -128,7 +126,7 @@ impl Response {
     pub fn from_code (code: HttpCode, message: &str) -> Self {
         Response {
             code,
-            headers: HttpHeaders::with_type("text/plain"),
+            headers: HttpHeaders::from_type("text/plain"),
             payload: ResponseType::Payload(message.as_bytes().to_vec())
         }
     }
@@ -138,6 +136,14 @@ impl Response {
             code,
             headers: HttpHeaders::empty(),
             payload: ResponseType::NoContent
+        }
+    }
+
+    pub fn drop () -> Self {
+        Response {
+            code: HttpCode::GatewayTimeout,
+            headers: HttpHeaders::empty(),
+            payload: ResponseType::Drop
         }
     }
 }

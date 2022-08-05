@@ -1,5 +1,5 @@
 use std::{io::Error, sync::{Mutex, MutexGuard}};
-use dc_api_core::app::{Settings, AppHandler, App};
+use dc_api_core::{app::{Settings, AppHandler, App}, http::codes::HttpCode};
 
 struct ServerHandler;
 impl AppHandler for ServerHandler {
@@ -34,14 +34,33 @@ fn main () {
 
     {
         let mut app = get_app();
-        app.router.register("/test-endpoint/hello".to_string(), |ctx| {
-            println!("{:?} {}", ctx.req.method, ctx.req.path);
-            return ctx.text("Hello Postman!");
+        app.router.register("/test-endpoint/ctx".to_string(), |ctx| {
+            let msg = format!("{:#?}", ctx);
+            return ctx.text(&msg);
+        });
+
+        app.router.register("/test-endpoint/ip".to_string(), |ctx| {
+            let msg = format!("{:?}", ctx.address);
+            return ctx.text(&msg);
+        });
+
+        app.router.register("/test-endpoint/headers".to_string(), |mut ctx| {
+            let hostname = ctx.get_header_default("host", "none".to_string());
+            ctx.set_header("x-echo-host", hostname);
+            return ctx.text("Check headers!");
         });
 
         app.router.register("/test-endpoint/{sup}-{sub}".to_string(), |ctx| {
-            println!("{:?}", ctx.params);
-            return ctx.text_status("Hello Postman!", dc_api_core::http::codes::HttpCode::NotFound);
+            let msg = format!("{:?}", ctx.params);
+            return ctx.text(&msg);
+        });
+
+        app.router.register("/test-endpoint/404".to_string(), |ctx| {
+            return ctx.text_status("Nothing there!", HttpCode::NotFound);
+        });
+
+        app.router.register("/test-endpoint/redirect".to_string(), |ctx| {
+            return ctx.redirect("./redirected");
         });
 
         app.ws_endpoints.register("/socket", "test-event", |ctx| {

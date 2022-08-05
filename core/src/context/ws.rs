@@ -11,13 +11,11 @@ pub struct SocketContext {
 
 impl SocketContext {
 	pub fn from<Connection: HttpConnection> (connection: Connection, req: Request) -> Self {
+		let http = HttpContext::from(&connection, req, HashMap::new());
 		let stream = connection.into_stream();
 		let ws_stream = WebSocket::from_raw_socket(stream, Role::Server, None);
 
-		SocketContext {
-			http: HttpContext::from(req, HashMap::new()),
-			stream: ws_stream
-		}
+		SocketContext { http, stream: ws_stream }
 	}
 
 	pub fn text (&mut self, event: &str, message: &str) {
