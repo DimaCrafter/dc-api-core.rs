@@ -11,5 +11,6 @@ bufstream = "0.1.4"
 byteorder = "1.4.3"
 base64 = "0.13.0"
 sha1 = "0.10.1"
+json = "0.12.4"
 tungstenite = "0.17.3"
 dc-macro = { path = "../macro" }

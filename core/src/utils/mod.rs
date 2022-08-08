@@ -1,3 +1,5 @@
+use json::JsonValue;
+
 pub mod log;
 pub mod stream;
 pub mod macros;
@@ -23,4 +25,13 @@ pub fn camel_to_kebab (value: &String) -> String {
     }
 
     return if result.starts_with('-') { String::from(&result[1..]) } else { result };
+}
+
+pub fn json_access<'a> (obj: &'a mut JsonValue, path: &'a str) -> &'a mut JsonValue {
+    let mut result = obj;
+	for part in path.split('.') {
+		result = &mut result[part];
+	}
+
+	return result;
 }

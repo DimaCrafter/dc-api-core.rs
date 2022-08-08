@@ -18,6 +18,6 @@ This branch contains thread pool based HTTP/WS server without NAPI.
   - [ ] end
   - [ ] subscribe/unsubscribe
   - [ ] broadcast
-- [ ] Config module
+- [x] Config module
 - [ ] Database plugins support
 - [x] Log module

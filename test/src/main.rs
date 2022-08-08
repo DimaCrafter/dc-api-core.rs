@@ -1,16 +1,5 @@
-use std::{io::Error, sync::{Mutex, MutexGuard}};
-use dc_api_core::{app::{Settings, AppHandler, App}, http::codes::HttpCode, utils::log::*};
-
-struct ServerHandler;
-impl AppHandler for ServerHandler {
-    fn on_listen (error: Option<Error>) {
-        if let Some(error) = error {
-            log_error_lines("Listen error", error.to_string());
-        } else {
-            log_success("Listening on port 6080");
-        }
-    }
-}
+use std::sync::{Mutex, MutexGuard};
+use dc_api_core::{app::{App, config::config_path}, http::codes::HttpCode};
 
 static mut APP: Option<Mutex<App>> = None;
 #[inline(always)]
@@ -24,15 +13,13 @@ pub fn get_app () -> MutexGuard<'static, App> {
 
 fn main () {
     unsafe {
-        let app = App::new(Settings {
-            bind_address: "0.0.0.0:6080",
-            debug: true
-        });
-
+        let app = App::new();
         APP = Some(Mutex::new(app));
     }
 
     {
+        println!("{}", config_path("hello"));
+
         let mut app = get_app();
         app.router.register("/test-endpoint/ctx".to_string(), |ctx| {
             let msg = format!("{:#?}", ctx);
@@ -68,5 +55,5 @@ fn main () {
         });
     }
 
-    dc_api_core::spawn_server::<ServerHandler>(get_app_mutex());
+    dc_api_core::spawn_server(get_app_mutex());
 }

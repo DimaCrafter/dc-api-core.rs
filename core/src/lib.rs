@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-use app::{AppHandler, App};
+use app::App;
 
 pub mod app;
 pub mod http;
@@ -10,6 +10,6 @@ pub mod utils;
 
 pub extern crate dc_macro;
 
-pub fn spawn_server<H: AppHandler> (app: &'static Mutex<App>) {
-    app::server::start_server::<H>(app);
+pub fn spawn_server (app: &'static Mutex<App>) {
+    app::server::start_server(app);
 }
