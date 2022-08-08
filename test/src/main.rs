@@ -1,13 +1,13 @@
 use std::{io::Error, sync::{Mutex, MutexGuard}};
-use dc_api_core::{app::{Settings, AppHandler, App}, http::codes::HttpCode};
+use dc_api_core::{app::{Settings, AppHandler, App}, http::codes::HttpCode, utils::log::*};
 
 struct ServerHandler;
 impl AppHandler for ServerHandler {
     fn on_listen (error: Option<Error>) {
         if let Some(error) = error {
-			println!("Listen error: {}", error.to_string());
+            log_error_lines("Listen error", error.to_string());
         } else {
-            println!("Listening...");
+            log_success("Listening on port 6080");
         }
     }
 }
