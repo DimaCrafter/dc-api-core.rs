@@ -1,3 +1,6 @@
+use std::process;
+use json::JsonValue;
+use crate::{app::config::Config, utils::{json_read_array, log::log_error}};
 use super::entity::{Request, Response};
 
 static mut CORS: Option<CorsConfig> = None;
@@ -10,13 +13,35 @@ pub struct CorsConfig {
 
 impl CorsConfig {
 	fn init () -> &'static mut CorsConfig {
-		let policy = CorsConfig {
-			origin: String::new(),
-			methods: "GET,POST".to_string(),
-			headers: "content-type,session".to_string(),
-			ttl: "86400".to_string()
-		};
+		let config = Config::branch("cors");
+		let origin = config["origin"].as_str().unwrap_or("").to_string();
 
+		fn bake_error<'a> (msg: &'a str) -> impl (Fn() -> &'static str) + 'a {
+			return move || {
+				log_error(&format!("Config parsing error: {}", msg));
+				process::exit(-1);
+			};
+		}
+
+		let methods = json_read_array(
+			&config["methods"],
+			JsonValue::as_str,
+			bake_error("cors.methods[...] must be a string")
+		)
+		.map(|list| list.join(","))
+		.unwrap_or_else(|| "GET,POST".to_string());
+
+		let headers = json_read_array(
+			&config["headers"],
+			JsonValue::as_str,
+			bake_error("cors.headers[...] must be a string")
+		)
+		.map(|list| list.join(","))
+		.unwrap_or_else(|| "content-type,session".to_string());
+
+		let ttl = config["ttl"].as_u32().map(|v| v.to_string()).unwrap_or("86400".to_string());
+
+		let policy = CorsConfig { origin, methods, headers, ttl };
 		return unsafe { CORS.insert(policy) };
 	}
 

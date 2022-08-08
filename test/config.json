@@ -1,4 +1,8 @@
 {
 	"port": 6080,
-	"hello": "Hi there!"
+	"hello": "Hi there!",
+
+	"cors": {
+		"methods": ["GET", "POST", "PUT"]
+	}
 }

@@ -35,3 +35,24 @@ pub fn json_access<'a> (obj: &'a mut JsonValue, path: &'a str) -> &'a mut JsonVa
 
 	return result;
 }
+
+pub fn json_read_array<'a, V: 'a, G, E>(obj: &'a JsonValue, getter: G, empty: E) -> Option<Vec<V>>
+where
+    G: Fn(&'a JsonValue) -> Option<V>,
+    E: Fn() -> V,
+{
+    match obj {
+        JsonValue::Array(array) => Some({
+            array.iter()
+                .map(|raw| {
+                    if let Some(value) = (getter)(raw) {
+                        value
+                    } else {
+                        (empty)()
+                    }
+                })
+                .collect::<Vec<V>>()
+        }),
+        _ => None,
+    }
+}

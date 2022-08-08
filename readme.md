@@ -6,8 +6,8 @@ This branch contains thread pool based HTTP/WS server without NAPI.
 
 ## TODOs
 
-- [-] CORS
-  - [ ] Policy configuration
+- [x] CORS
+  - [x] Policy configuration
 - [ ] URL-encoded form support
 - [ ] Multipart form support
 - [ ] JSON support

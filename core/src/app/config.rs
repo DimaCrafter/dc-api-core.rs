@@ -58,6 +58,11 @@ impl Config {
 			return Self::init();
 		}
 	}
+
+	#[inline]
+	pub fn branch (name: &str) -> &'static mut JsonValue {
+		return &mut Self::get().obj[name];
+	}
 }
 
 #[inline]
