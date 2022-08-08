@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use threadpool::ThreadPool;
 
 use super::config::Config;
+use crate::http::cors::Cors;
 use crate::utils::log::*;
 use super::App;
 use crate::context::http::HttpContext;
@@ -64,14 +65,20 @@ fn proceed_connection<Http: HttpEngine<Connection> + Send, Connection: HttpConne
 }
 
 fn proceed_http<Connection: HttpConnection> (app_mutex: &Mutex<App>, mut connection: Connection, req: Request) -> Result<(), Error> {
-    let res;
+    let mut res;
     let mut app = app_mutex.lock().unwrap();
 
-    if let Some((endpoint, params)) = app.router.match_path(&req.path) {
+    let cors = Cors::new(&req);
+    if let HttpMethod::OPTIONS = req.method {
+        res = Response::from_status(HttpCode::OK);
+        cors.apply_preflight(&mut res);
+    } else if let Some((endpoint, params)) = app.router.match_path(&req.path) {
         let ctx = HttpContext::from(&connection, req, params);
         res = (endpoint.call)(ctx);
+        cors.apply_normal(&mut res);
     } else {
         res = Response::from_code(HttpCode::NotFound, "API endpoint not found");
+        cors.apply_normal(&mut res);
     }
 
     connection.respond(res)?;
